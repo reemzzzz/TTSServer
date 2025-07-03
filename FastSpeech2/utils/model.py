@@ -19,20 +19,33 @@ def download_from_gdrive(file_id):
     base_url = "https://drive.google.com/uc?export=download"
     session = requests.Session()
 
+    # Initial request
     response = session.get(base_url, params={"id": file_id}, stream=True)
-    
-    # Check for confirmation token (for large files)
+    token = None
+
+    # Look for confirmation token for large files
     for key, value in response.cookies.items():
         if key.startswith("download_warning"):
-            response = session.get(base_url, params={"id": file_id, "confirm": value}, stream=True)
+            token = value
             break
 
+    if token:
+        response = session.get(base_url, params={"id": file_id, "confirm": token}, stream=True)
+
+    # Download the actual file
     file_buffer = BytesIO()
     for chunk in response.iter_content(32768):
-        file_buffer.write(chunk)
+        if chunk:
+            file_buffer.write(chunk)
 
     file_buffer.seek(0)
-    print("✅ Model download complete.")
+    sample = file_buffer.read(100).decode(errors='ignore')
+    file_buffer.seek(0)
+
+    if "<html" in sample.lower():
+        raise ValueError("❌ Google Drive returned an HTML page instead of a file. Check if the file is public.")
+
+    print("✅ Download complete.")
     return file_buffer
 
 def get_model(args, configs, device, train=False):
