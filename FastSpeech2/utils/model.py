@@ -37,35 +37,29 @@ def download_from_gdrive(file_id):
 
 def get_model(args, configs, device, train=False):
     (preprocess_config, model_config, train_config) = configs
-
     model = FastSpeech2(preprocess_config, model_config).to(device)
 
     if args.restore_step:
-        print(f"🔧 Restoring checkpoint from step {args.restore_step}...")
+        ckpt_filename = f"{args.restore_step}.pth.tar"
+        file_id = "1ukvuRIRJQUATD642az1_KL-yEBkRHKLE"
 
-        # ✅ Provide your actual Google Drive file ID here
-        gdrive_file_id = "1ukvuRIRJQUATD642az1_KL-yEBkRHKLE"
+        buffer = download_from_gdrive(file_id)
+        buffer.seek(0)
 
-        # Download .pth.tar checkpoint file into memory
-        buffer = download_from_gdrive(gdrive_file_id)
+        try:
+            sample = buffer.read(100).decode(errors='ignore')
+            buffer.seek(0)
+            if "<html" in sample.lower():
+                raise ValueError("Downloaded HTML instead of model checkpoint.")
+        except Exception as e:
+            raise RuntimeError("Checkpoint download failed") from e
+
         ckpt = torch.load(buffer, map_location=torch.device('cpu'))
-
         model.load_state_dict(ckpt["model"])
-        print("✅ Model weights loaded.")
-
-    if train:
-        scheduled_optim = ScheduledOptim(
-            model, train_config, model_config, args.restore_step
-        )
-        if args.restore_step:
-            scheduled_optim.load_state_dict(ckpt["optimizer"])
-        model.train()
-        return model, scheduled_optim
 
     model.eval()
     model.requires_grad_ = False
     return model
-
 
 
 # def get_model(args, configs, device, train=False):
@@ -94,10 +88,9 @@ def get_model(args, configs, device, train=False):
 #     return model
 
 
-# def get_param_num(model):
-#     num_param = sum(param.numel() for param in model.parameters())
-#     return num_param
-
+def get_param_num(model):
+    num_param = sum(param.numel() for param in model.parameters())
+    return num_param
 
 def get_vocoder(config, device):
     name = config["vocoder"]["model"]
