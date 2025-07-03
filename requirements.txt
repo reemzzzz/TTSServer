@@ -2,8 +2,8 @@ g2p-en
 inflect
 librosa
 matplotlib
-numba
-numpy
+numba==0.55.2
+numpy==1.21.6
 pypinyin
 pyworld
 PyYAML
