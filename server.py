@@ -6,6 +6,10 @@ from flask import request, send_file
 
 app = Flask(__name__)
 
+@app.route('/')
+def home():
+    return "✅ FastSpeech2 TTS Server is running!"
+
 @app.route("/speak", methods=["POST"])
 def speak():
     try:
