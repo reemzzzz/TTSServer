@@ -1,27 +1,30 @@
-# Use a Python base image with required tools
+# Use Python image with system packages
 FROM python:3.10-slim
 
-# Install system dependencies
+# Install system-level packages needed for librosa, soundfile, pyworld, etc.
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsndfile1 \
     build-essential \
+    libgl1 \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Set work directory
+# Set working directory
 WORKDIR /app
 
-# Copy project files
+# Copy code
 COPY . /app
 
-# Install Python dependencies
+# Install PyTorch (CPU-only wheel)
 RUN pip install --upgrade pip
-RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+RUN pip install torch==1.7.0+cpu torchvision==0.8.1+cpu torchaudio==0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
+
+# Install rest of the dependencies
 RUN pip install -r requirements.txt
 
-# Expose the port Flask runs on
+# Expose port
 EXPOSE 5000
 
-# Set entry command
+# Start server
 CMD ["python", "server.py"]
