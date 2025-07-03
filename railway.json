@@ -1,6 +1,6 @@
 {
   "build": {
-    "builder": "docker"
-  }
+    "dockerfile": "Dockerfile"
+  },
+  "start": "python server.py"
 }
-
