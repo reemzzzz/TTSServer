@@ -44,7 +44,7 @@ def get_model(args, configs, device, train=False):
         print(f"🔧 Restoring checkpoint from step {args.restore_step}...")
 
         # ✅ Provide your actual Google Drive file ID here
-        gdrive_file_id = "https://drive.google.com/file/d/1ukvuRIRJQUATD642az1_KL-yEBkRHKLE/view?usp=sharing"
+        gdrive_file_id = "1ukvuRIRJQUATD642az1_KL-yEBkRHKLE"
 
         # Download .pth.tar checkpoint file into memory
         buffer = download_from_gdrive(gdrive_file_id)
