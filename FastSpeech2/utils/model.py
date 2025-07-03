@@ -8,18 +8,50 @@ import FastSpeech2.hifigan as hifigan
 from FastSpeech2.model import FastSpeech2, ScheduledOptim
 
 
+import os
+import torch
+import requests
+from io import BytesIO
+from FastSpeech2.model import FastSpeech2, ScheduledOptim
+
+def download_from_gdrive(file_id):
+    print("📥 Downloading model from Google Drive...")
+    base_url = "https://drive.google.com/uc?export=download"
+    session = requests.Session()
+
+    response = session.get(base_url, params={"id": file_id}, stream=True)
+    
+    # Check for confirmation token (for large files)
+    for key, value in response.cookies.items():
+        if key.startswith("download_warning"):
+            response = session.get(base_url, params={"id": file_id, "confirm": value}, stream=True)
+            break
+
+    file_buffer = BytesIO()
+    for chunk in response.iter_content(32768):
+        file_buffer.write(chunk)
+
+    file_buffer.seek(0)
+    print("✅ Model download complete.")
+    return file_buffer
 
 def get_model(args, configs, device, train=False):
     (preprocess_config, model_config, train_config) = configs
 
     model = FastSpeech2(preprocess_config, model_config).to(device)
+
     if args.restore_step:
-        ckpt_path = os.path.join(
-            train_config["path"]["ckpt_path"],
-            "{}.pth.tar".format(args.restore_step),
-        )
-        ckpt = torch.load(ckpt_path, map_location=torch.device('cpu'))
+        print(f"🔧 Restoring checkpoint from step {args.restore_step}...")
+
+        # ✅ Provide your actual Google Drive file ID here
+        gdrive_file_id = "https://drive.google.com/file/d/1ukvuRIRJQUATD642az1_KL-yEBkRHKLE/view?usp=sharing"
+
+        # Download .pth.tar checkpoint file into memory
+        buffer = download_from_gdrive(gdrive_file_id)
+        ckpt = torch.load(buffer, map_location=torch.device('cpu'))
+
         model.load_state_dict(ckpt["model"])
+        print("✅ Model weights loaded.")
 
     if train:
         scheduled_optim = ScheduledOptim(
@@ -35,9 +67,36 @@ def get_model(args, configs, device, train=False):
     return model
 
 
-def get_param_num(model):
-    num_param = sum(param.numel() for param in model.parameters())
-    return num_param
+
+# def get_model(args, configs, device, train=False):
+#     (preprocess_config, model_config, train_config) = configs
+
+#     model = FastSpeech2(preprocess_config, model_config).to(device)
+#     if args.restore_step:
+#         ckpt_path = os.path.join(
+#             train_config["path"]["ckpt_path"],
+#             "{}.pth.tar".format(args.restore_step),
+#         )
+#         ckpt = torch.load(ckpt_path, map_location=torch.device('cpu'))
+#         model.load_state_dict(ckpt["model"])
+
+#     if train:
+#         scheduled_optim = ScheduledOptim(
+#             model, train_config, model_config, args.restore_step
+#         )
+#         if args.restore_step:
+#             scheduled_optim.load_state_dict(ckpt["optimizer"])
+#         model.train()
+#         return model, scheduled_optim
+
+#     model.eval()
+#     model.requires_grad_ = False
+#     return model
+
+
+# def get_param_num(model):
+#     num_param = sum(param.numel() for param in model.parameters())
+#     return num_param
 
 
 def get_vocoder(config, device):
