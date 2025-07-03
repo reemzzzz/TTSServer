@@ -21,6 +21,7 @@ RUN pip install --upgrade pip
 RUN pip install torch==1.13.1+cpu torchvision==0.14.1+cpu torchaudio==0.13.1 -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
 RUN pip install --upgrade pip setuptools wheel Cython
+RUN pip install cython setuptools wheel
 
 # Install rest of the dependencies
 RUN pip install -r requirements.txt
