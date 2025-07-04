@@ -6,13 +6,8 @@ import numpy as np
 
 import FastSpeech2.hifigan as hifigan
 from FastSpeech2.model import FastSpeech2, ScheduledOptim
-
-
-import os
-import torch
 import requests
 from io import BytesIO
-from FastSpeech2.model import FastSpeech2, ScheduledOptim
 
 def download_from_gdrive(file_id):
     print("📥 Downloading model from Google Drive...")
@@ -48,57 +43,33 @@ def download_from_gdrive(file_id):
     print("✅ Download complete.")
     return file_buffer
 
+
+_cached_ckpt_buffer = None
 def get_model(args, configs, device, train=False):
+    global _cached_ckpt_buffer
     (preprocess_config, model_config, train_config) = configs
+
     model = FastSpeech2(preprocess_config, model_config).to(device)
-
     if args.restore_step:
-        ckpt_filename = f"{args.restore_step}.pth.tar"
-        file_id = "1ukvuRIRJQUATD642az1_KL-yEBkRHKLE"
-
-        buffer = download_from_gdrive(file_id)
-        buffer.seek(0)
-
-        try:
-            sample = buffer.read(100).decode(errors='ignore')
-            buffer.seek(0)
-            if "<html" in sample.lower():
-                raise ValueError("Downloaded HTML instead of model checkpoint.")
-        except Exception as e:
-            raise RuntimeError("Checkpoint download failed") from e
-
-        ckpt = torch.load(buffer, map_location=torch.device('cpu'))
+        if _cached_ckpt_buffer is None:
+            _cached_ckpt_buffer = download_from_gdrive("1ukvuRIRJQUATD642az1_KL-yEBkRHKLE")
+        buffer = _cached_ckpt_buffer
+        ckpt = torch.load(buffer, map_location="cpu")
         model.load_state_dict(ckpt["model"])
+
+    if train:
+        scheduled_optim = ScheduledOptim(
+            model, train_config, model_config, args.restore_step
+        )
+        if args.restore_step:
+            scheduled_optim.load_state_dict(ckpt["optimizer"])
+        model.train()
+        return model, scheduled_optim
 
     model.eval()
     model.requires_grad_ = False
     return model
 
-
-# def get_model(args, configs, device, train=False):
-#     (preprocess_config, model_config, train_config) = configs
-
-#     model = FastSpeech2(preprocess_config, model_config).to(device)
-#     if args.restore_step:
-#         ckpt_path = os.path.join(
-#             train_config["path"]["ckpt_path"],
-#             "{}.pth.tar".format(args.restore_step),
-#         )
-#         ckpt = torch.load(ckpt_path, map_location=torch.device('cpu'))
-#         model.load_state_dict(ckpt["model"])
-
-#     if train:
-#         scheduled_optim = ScheduledOptim(
-#             model, train_config, model_config, args.restore_step
-#         )
-#         if args.restore_step:
-#             scheduled_optim.load_state_dict(ckpt["optimizer"])
-#         model.train()
-#         return model, scheduled_optim
-
-#     model.eval()
-#     model.requires_grad_ = False
-#     return model
 
 
 def get_param_num(model):
