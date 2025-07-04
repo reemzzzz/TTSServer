@@ -9,39 +9,42 @@ from FastSpeech2.model import FastSpeech2, ScheduledOptim
 import requests
 from io import BytesIO
 
+import requests
+from io import BytesIO
+
 def download_from_gdrive(file_id):
     print("📥 Downloading model from Google Drive...")
     base_url = "https://drive.google.com/uc?export=download"
     session = requests.Session()
 
-    # Initial request
+    # First request to get the confirmation token
     response = session.get(base_url, params={"id": file_id}, stream=True)
     token = None
 
-    # Look for confirmation token for large files
     for key, value in response.cookies.items():
         if key.startswith("download_warning"):
             token = value
             break
 
     if token:
-        response = session.get(base_url, params={"id": file_id, "confirm": token}, stream=True)
+        response = session.get(
+            base_url, params={"id": file_id, "confirm": token}, stream=True
+        )
 
-    # Download the actual file
+    # Check content type
+    content_type = response.headers.get("Content-Type", "")
+    if "text/html" in content_type:
+        raise ValueError("❌ Google Drive returned an HTML page instead of a file. Check if the file is public and downloadable.")
+
+    # Write file to buffer
     file_buffer = BytesIO()
     for chunk in response.iter_content(32768):
-        if chunk:
-            file_buffer.write(chunk)
+        file_buffer.write(chunk)
 
     file_buffer.seek(0)
-    sample = file_buffer.read(100).decode(errors='ignore')
-    file_buffer.seek(0)
-
-    if "<html" in sample.lower():
-        raise ValueError("❌ Google Drive returned an HTML page instead of a file. Check if the file is public.")
-
     print("✅ Download complete.")
     return file_buffer
+
 
 
 _cached_ckpt_buffer = None
