@@ -24,6 +24,7 @@ RUN pip install --upgrade pip setuptools wheel Cython
 RUN pip install cython setuptools wheel
 
 # Install rest of the dependencies
+RUN pip install requests
 RUN pip install -r requirements.txt
 
 # Expose port
